@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Coinigy market scanner</title>
+
+    <link href="bower_components/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!--[if lt IE 9]>
+    <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
+    <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+</head>
+<body>
+<div class="col-lg-9 col-md-9 col-lg-offset-3 col-md-offset-3">
+    <div class="row">
+        <h1>Coinigy market scanner</h1>
+    </div>
+    <div class="row">
+        <p>Alert if currency's price is below then lowest at the last:</p>
+        <div class="btn-group filter-period-buttons" data-toggle="buttons">
+            <label class="btn btn-default">
+                <input type="radio" name="filter-period" value="0">12 hours
+            </label>
+            <label class="btn btn-default">
+                <input type="radio" name="filter-period" value="1">day
+            </label>
+            <label class="btn btn-default">
+                <input type="radio" name="filter-period" value="2">2 days
+            </label>
+            <label class="btn btn-default">
+                <input type="radio" name="filter-period" value="3">3 days
+            </label>
+        </div>
+    </div>
+
+</div>
+
+<script src="/bower_components/jquery/dist/jquery.min.js"></script>
+<script src="/bower_components/bootstrap/dist/js/bootstrap.min.js"></script>
+<script src="/bower_components/socket.io-client/dist/socket.io.slim.js"></script>
+<script>
+    (function() {
+        var socket = io.connect('http://localhost:3000');
+        socket.on('alert', function (data) {
+            console.log(data);
+        });
+
+        $('.filter-period-buttons input').change(function() {
+            console.log($(this).val() + ' filter has chosen');
+            socket.emit('choose_filter', {
+                period: $(this).val()
+            });
+        });
+
+    })();
+</script>
+</body>
+</html>

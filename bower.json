@@ -1,0 +1,17 @@
+{
+  "name": "market-scanner",
+  "description": "cryptocurrency market scanner",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "jquery": "^3.2.1",
+    "bootstrap": "^3.3.7",
+    "socket.io-client": "^2.0.3",
+    "howler.js": "howler#^2.0.4"
+  }
+}

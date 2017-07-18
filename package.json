@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "express": "^4.15.3",
+    "express-handlebars": "^3.0.0",
+    "express-robots": "^0.1.6",
+    "socket.io": "^2.0.3"
+  }
+}
