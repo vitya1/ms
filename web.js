@@ -1,11 +1,14 @@
-var fs = require('fs');
-var express = require('express');
-var app = express();
-var hbs = require('express-handlebars');
-var robots = require('express-robots');
-var server = require('http').createServer(app);
-var io = require('socket.io')(server);
+const fs = require('fs');
+const express = require('express');
+const app = express();
+const hbs = require('express-handlebars');
+const robots = require('express-robots');
+const server = require('http').createServer(app);
+const io = require('socket.io')(server);
+const net = require('net');
+const os = require('os');
 
+"use strict";
 
 app.engine('hbs', hbs({extname: 'hbs'}));
 app.set('views', (__dirname + '/views'));
@@ -24,28 +27,40 @@ app.use(function(req, res) {
     res.send('404 error :(');
 });
 
-var clients = [];
-io.on('connection', function (socket) {
+//@todo change to Map()
+const clients = [];
+io.on('connection', socket => {
+    socket.client_id = clients.length;
     clients.push(socket);
 
     socket.emit('alert', { data: 'ETH' });
-    socket.on('choose_filter', function (data) {
+    socket.on('choose_filter', data => {
         console.log(data);
+    });
+
+    socket.on('disconnect', () => {
+        //delete client
     });
 });
 
-server.listen(3000, function () {
-    console.log('web server launched')
+server.listen(3000);
+
+
+const socket_path = __dirname + '/pipe.sock';
+const socket_client = net.createConnection(socket_path);
+
+socket_client.on('error', err => {
+    console.log(err);
+}).on('data', data => {
+    data.toString().split(os.EOL).forEach(s => {
+        if(s === '') {
+            return;
+        }
+        let arr = JSON.parse(s);
+        console.log(arr);
+        for(let i = 0; i < clients.length; i++) {
+            clients[i].emit('alert', arr);
+        }
+    });
+
 });
-
-
-
-/*
-
-
-if(price below than last 12 hours, day, 2 days, 3 days) {
-    say it
-}
-
-
- */
