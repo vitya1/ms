@@ -51,9 +51,25 @@
 <script src="/bower_components/socket.io-client/dist/socket.io.slim.js"></script>
 <script>
     (function() {
+        var window_focus = true;
+        var alert_marker = '* ';
+        var alerting = false;
         var socket = io.connect('http://localhost:3000');
         socket.on('alert', function (data) {
             console.log(data);
+            if(!alerting && !window_focus) {
+                document.title = alert_marker + document.title;
+            }
+            alerting = true;
+        });
+        $(window).focus(function() {
+            if(alerting) {
+                document.title = document.title.replace(alert_marker, '');
+                alerting = false;
+            }
+            window_focus = true;
+        }).blur(function() {
+            window_focus = false;
         });
 
         $('.filter-period-buttons input').change(function() {

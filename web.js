@@ -33,7 +33,6 @@ io.on('connection', socket => {
     socket.client_id = clients.length;
     clients.push(socket);
 
-    socket.emit('alert', { data: 'ETH' });
     socket.on('choose_filter', data => {
         console.log(data);
     });
