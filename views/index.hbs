@@ -7,6 +7,7 @@
     <title>Coinigy market scanner</title>
 
     <link href="bower_components/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="bower_components/font-awesome/css/font-awesome.min.css" rel="stylesheet">
 
     <!--[if lt IE 9]>
     <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
@@ -14,30 +15,33 @@
     <![endif]-->
 </head>
 <body>
-<div class="col-lg-9 col-md-9 col-lg-offset-3 col-md-offset-3">
-    <div class="row">
+<div class="row">
+    <div class="col-lg-5 col-md-5 col-lg-offset-3 col-md-offset-3">
         <h1>Coinigy market scanner</h1>
     </div>
-    <div class="row">
-        <p>Alert if currency price is below then lowest at the last:</p>
-        <div class="btn-group filter-period-buttons" data-toggle="buttons">
-            <label class="btn btn-default">
-                <input type="radio" name="filter-period" value="0">12 hours
-            </label>
-            <label class="btn btn-default">
-                <input type="radio" name="filter-period" value="1">day
-            </label>
-            <label class="btn btn-default">
-                <input type="radio" name="filter-period" value="2">2 days
-            </label>
-            <label class="btn btn-default">
-                <input type="radio" name="filter-period" value="3">3 days
-            </label>
+</div>
+<div class="row">
+    <div class="col-lg-5 col-md-5 col-lg-offset-3 col-md-offset-3">
+            <p>Alert if currency price is below then lowest at the last:</p>
+            <div class="btn-group filter-period-buttons" data-toggle="buttons">
+                <label class="btn btn-default">
+                    <input type="radio" name="filter-period" value="0">12 hours
+                </label>
+                <label class="btn btn-default">
+                    <input type="radio" name="filter-period" value="1">day
+                </label>
+                <label class="btn btn-default">
+                    <input type="radio" name="filter-period" value="2">2 days
+                </label>
+                <label class="btn btn-default">
+                    <input type="radio" name="filter-period" value="3">3 days
+                </label>
         </div>
     </div>
-
+    <div class="col-lg-1 col-md-1">
+        <button class="btn btn-default sound-button"><i class="fa fa-volume-up" aria-hidden="true"></i></button>
+    </div>
 </div>
-
 
 <div class="col-lg-9 col-md-9 col-lg-offset-3 col-md-offset-3">
     <table class="table">
@@ -45,15 +49,29 @@
     </table>
 </div>
 
-
 <script src="/bower_components/jquery/dist/jquery.min.js"></script>
 <script src="/bower_components/bootstrap/dist/js/bootstrap.min.js"></script>
 <script src="/bower_components/socket.io-client/dist/socket.io.slim.js"></script>
+<script src="/bower_components/howler.js/dist/howler.min.js"></script>
 <script>
     (function() {
         var window_focus = true;
         var alert_marker = '* ';
         var alerting = false;
+        var play = true;
+        var sound = new Howl({
+            src: ['./sounds/zero_alert.mp3']
+        });
+        $('.sound-button').click(function(){
+            if(play) {
+                $('.sound-button i').addClass('fa-volume-off').removeClass('fa-volume-up');
+            }
+            else {
+                $('.sound-button i').addClass('fa-volume-up').removeClass('fa-volume-off');
+            }
+            play = !play;
+        });
+
         var socket = io.connect('http://localhost:3000');
         socket.on('alert', function (data) {
             console.log(data);
@@ -61,6 +79,9 @@
                 document.title = alert_marker + document.title;
             }
             alerting = true;
+            if(play) {
+                sound.play();
+            }
         });
         $(window).focus(function() {
             if(alerting) {
