@@ -56,7 +56,7 @@
     </div>
     <table class="table content-block">
         <thead>
-            <th>#</th><th>Pair</th><th>Value</th><th>Market</th><th>Time</th><th>Coinigy link</th>
+            <th>#</th><th>Pair</th><th>Price</th><th>Market</th><th>Time</th><th>Coinigy link</th>
         </thead>
         <tbody></tbody>
     </table>
@@ -102,7 +102,7 @@
             $('.start-screen').hide();
             $('.content-block').show();
             $('.content-block tbody')
-                    .prepend('<tr><td>' + ++i + '</td><td>' + data[1] + '</td><td>' + data[3] + '</td><td>' + data[0] + '</td><td>'
+                    .prepend('<tr><td>' + ++i + '</td><td>' + data[1] + '</td><td>' + data[2] + '</td><td>' + data[0] + '</td><td>'
                             + moment().format('MMMM Do, hh:mm:ss') + '</td><td><a target="_blank" href="https://www.coinigy.com/main/markets/'
                             + data[0] + '/' + data[1] + '"><i class="fa fa-external-link" aria-hidden="true"></i> open</a></td></tr>');
 

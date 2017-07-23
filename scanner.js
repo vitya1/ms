@@ -5,6 +5,46 @@ const os = require('os');
 
 "use strict";
 
+//@todo now its only the lowest price for the last 3 days
+const Analyser = function() {
+    const TEN_MINUTES = 600 * 1000;
+    const HOUR = 60 * TEN_MINUTES;
+    const LOW_INTERVAL_LENGHT = 3 * 3600 * 1000 / TEN_MINUTES;
+    const data = {
+        low: new Map(),
+        last_lowest_time: null,
+    };
+
+    this.push = function(value, time) {
+        let ten_m_time = Math.floor(time / TEN_MINUTES);
+        let lowest = data.low.get(ten_m_time);
+        if(lowest === undefined || lowest > value) {
+            data.low.set(ten_m_time, value);
+        }
+    };
+
+    this.analytics = function() {
+        let prev_min = data.last_lowest_time;
+        let min = 999999999999999; //@todo
+        for(let [key, value] of data.low.entries()) {
+            if(min > value) {
+                min = value;
+            }
+        }
+        data.last_lowest_time = min;
+        return min == prev_min;
+    };
+
+    this.clean = function() {
+        for(let key of data.low.keys()) {
+            if(key < LOW_INTERVAL_LENGHT) {
+                //@todo key is not time here but number of ten-munutes period
+                data.delete(key);
+            }
+        }
+    };
+};
+
 const PriceCollector = {
     data: {},
     socket_client: null,
@@ -12,17 +52,12 @@ const PriceCollector = {
     push: function(market, pair, price, total, time_str) {
         const timestamp = (new Date(time_str)).getTime();
         this._initStructure(market, pair);
-//        this.data[market][pair]['data'].push(price, total, timestamp);
-        this.data[market][pair]['data'].push(price);
+        this.data[market][pair].push(price);
 
-        //@todo just for test
-        if(this.data[market][pair]['min'] > price) {
-            this.data[market][pair]['min'] = price;
+        //@todo make by timer
+        if(this.data[market][pair].analytics() && this.socket_client !== null) {
             let data = JSON.stringify([market, pair, price, total, time_str]) + os.EOL;
-
-            if(this.socket_client !== null) {
-                this.socket_client.write(data);
-            }
+            this.socket_client.write(data);
         }
     },
 
@@ -31,11 +66,10 @@ const PriceCollector = {
             this.data[market] = {};
         }
         if(!this.data[market][pair]) {
-            this.data[market][pair] = {
-                data: [],
-                min: 99999999999999999 //@todo
-                //object here
-            };
+            this.data[market][pair] = new Analyser();
+            setInterval(() => {
+                this.data[market][pair].clean();
+            }, 60000);
         }
     }
 
