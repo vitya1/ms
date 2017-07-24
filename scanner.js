@@ -2,43 +2,59 @@ const socketCluster = require('socketcluster-client');
 const net = require('net');
 const fs = require('fs');
 const os = require('os');
+const readline = require('readline');
 
 "use strict";
 
 //@todo now its only the lowest price for the last 3 days
 const Analyser = function() {
     const TEN_MINUTES = 600 * 1000;
-    const HOUR = 60 * TEN_MINUTES;
-    const LOW_INTERVAL_LENGHT = 3 * 3600 * 1000 / TEN_MINUTES;
+    const HOUR = 6 * TEN_MINUTES;
+    const LOW_INTERVAL_LENGTH = 3 * 24 * HOUR / TEN_MINUTES;
     const data = {
         low: new Map(),
         last_lowest_time: null,
+        last_time: null
+    };
+
+    this.getData = function () {
+        return data;
+    };
+
+    this.restoreData = function(import_data) {
+        for(let i in import_data) {
+            if(!import_data.hasOwnProperty(i)) {
+                continue;
+            }
+            data[i] = Array.isArray(import_data[i]) ? new Map(import_data[i]) : import_data[i];
+        }
     };
 
     this.push = function(value, time) {
-        let ten_m_time = Math.floor(time / TEN_MINUTES);
-        let lowest = data.low.get(ten_m_time);
+        data.last_time = Math.floor(time / TEN_MINUTES);
+        let lowest = data.low.get(data.last_time);
         if(lowest === undefined || lowest > value) {
-            data.low.set(ten_m_time, value);
+            data.low.set(data.last_time, value);
         }
     };
 
-    this.analytics = function() {
-        let prev_min = data.last_lowest_time;
-        let min = 999999999999999; //@todo
+    this.isLastMin = function() {
+        let min = data.low.get(data.last_time);
+        let min_key = data.last_time;
         for(let [key, value] of data.low.entries()) {
             if(min > value) {
                 min = value;
+                min_key = key;
             }
         }
-        data.last_lowest_time = min;
-        return min == prev_min;
+
+        //@todo make min_key_12h min_key_24h....
+        return data.last_time === min_key;
     };
 
     this.clean = function() {
         for(let key of data.low.keys()) {
-            if(key < LOW_INTERVAL_LENGHT) {
-                //@todo key is not time here but number of ten-munutes period
+            if(key < LOW_INTERVAL_LENGTH) {
                 data.delete(key);
             }
         }
@@ -46,16 +62,17 @@ const Analyser = function() {
 };
 
 const PriceCollector = {
+    backup_file: __dirname + '/backup_data',
     data: {},
     socket_client: null,
 
     push: function(market, pair, price, total, time_str) {
         const timestamp = (new Date(time_str)).getTime();
         this._initStructure(market, pair);
-        this.data[market][pair].push(price);
+        this.data[market][pair].push(price, timestamp);
 
         //@todo make by timer
-        if(this.data[market][pair].analytics() && this.socket_client !== null) {
+        if(this.data[market][pair].isLastMin() && this.socket_client !== null) {
             let data = JSON.stringify([market, pair, price, total, time_str]) + os.EOL;
             this.socket_client.write(data);
         }
@@ -71,6 +88,44 @@ const PriceCollector = {
                 this.data[market][pair].clean();
             }, 60000);
         }
+    },
+
+    extract: function(callback) {
+        let wstream = fs.createWriteStream(this.backup_file, {flags: 'w'});
+        for (let i in this.data) {
+            for (let j in this.data[i]) {
+                wstream.write(JSON.stringify([i, j, JSON.stringify(this.data[i][j].getData(), (key, val) => {
+                        if (typeof val === "object" && val !== null
+                            && val.__proto__.toString() === "[object Map]") {
+                            return Array.from(val);
+                        }
+                        return val;
+                    })]) + os.EOL);
+            }
+        }
+        wstream.end(() => {
+            if(callback && typeof callback === 'function') {
+                callback();
+            }
+        });
+    },
+
+    restore: function() {
+        fs.stat(this.backup_file, err => {
+            if (err) {
+                return;
+            }
+            const read_stream = fs.createReadStream(this.backup_file);
+            const rl = readline.createInterface({
+                input: read_stream
+            });
+
+            rl.on('line', (line) => {
+                let obj = JSON.parse(line);
+                this._initStructure(obj[0], obj[1]);
+                this.data[obj[0]][obj[1]].restoreData(JSON.parse(obj[2]));
+            });
+        });
     }
 
 };
@@ -139,13 +194,14 @@ const Scanner = function() {
     });
 };
 
+PriceCollector.restore();
 const socket_path = __dirname + '/pipe.sock';
-fs.stat(socket_path, function(err) {
+fs.stat(socket_path, err => {
     if (!err) {
         fs.unlinkSync(socket_path);
     }
 
-    const unix_server = net.createServer(function(client) {
+    const unix_server = net.createServer(client => {
         console.log('unix socket server');
         client.on('close', () => {
             PriceCollector.socket_client = null;
@@ -163,13 +219,12 @@ fs.stat(socket_path, function(err) {
 
 Scanner();
 
-/*
-penny stock example:
-- <= 1 penny (LAST >= 1p)
-- >= 5$ (LAST <= 5$)
-- 5 min percent change more than 10% (5 min percent change <= - 10%)
-
-cryptocurrency:
-- coin more than 2000$ per day trades
-- bellow than low of the past 3 days of trading
- */
+process.on('SIGINT', () => {
+    PriceCollector.extract(() => {
+        process.exit();
+    });
+});
+process.on('uncaughtException', err => {
+    console.log(err);
+    PriceCollector.extract();
+});

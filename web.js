@@ -47,7 +47,7 @@ server.listen(3000);
 
 
 const socket_path = __dirname + '/pipe.sock';
-const socket_client = net.createConnection(socket_path);
+let socket_client = net.createConnection(socket_path);
 
 socket_client.on('error', err => {
     console.log(err);
