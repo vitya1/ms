@@ -1,4 +1,6 @@
 .idea/*
+package-lock.json
+/tmp/restart.txt
 
 # Logs
 logs
