@@ -6,14 +6,13 @@ const readline = require('readline');
 
 "use strict";
 
-//@todo now its only the lowest price for the last 3 days
 const Analyser = function() {
     const TEN_MINUTES = 600 * 1000;
     const HOUR = 6 * TEN_MINUTES;
-    const LOW_INTERVAL_LENGTH = 3 * 24 * HOUR / TEN_MINUTES;
+    const DAY = 24 * HOUR / TEN_MINUTES;
     const data = {
         low: new Map(),
-        last_lowest_time: null,
+        last_lowest_times: new Map(), //for preventing one-by-one alerting of a single event
         last_time: null
     };
 
@@ -38,23 +37,39 @@ const Analyser = function() {
         }
     };
 
-    this.isLastMin = function() {
-        let min = data.low.get(data.last_time);
+    this.findLastMin = function() {
         let min_key = data.last_time;
-        for(let [key, value] of data.low.entries()) {
-            if(min > value) {
-                min = value;
-                min_key = key;
+        let now = min_key;
+        let times = new Map([[DAY * 3, null], [DAY * 2, null], [DAY, null], [DAY * 0.5, null]]);
+
+        for(let [key, val] of data.low.entries()) {
+            for(let [time_i, cur_min] of times) {
+                if(now - key <= time_i) {
+                    if(cur_min === null || cur_min[1] > val) {
+                        times.set(time_i, [key, val]);
+                    }
+                }
             }
         }
 
-        //@todo make min_key_12h min_key_24h....
-        return data.last_time === min_key;
+        //@todo move to a separated method
+        //preparing for sending
+        let result = [];
+        for(let [key, val] of times.entries()) {
+            let last_min = data.last_lowest_times.get(key);
+            if(val[0] === min_key
+                && (last_min === undefined || last_min[0] !== min_key)) {
+                result.push(key / DAY);
+            }
+        }
+        data.last_lowest_times = times;
+        return result;
     };
 
     this.clean = function() {
+        let lowest_time = data.last_time - 3 * DAY;
         for(let key of data.low.keys()) {
-            if(key < LOW_INTERVAL_LENGTH) {
+            if(key < lowest_time) {
                 data.delete(key);
             }
         }
@@ -72,9 +87,12 @@ const PriceCollector = {
         this.data[market][pair].push(price, timestamp);
 
         //@todo make by timer
-        if(this.data[market][pair].isLastMin() && this.socket_client !== null) {
-            let data = JSON.stringify([market, pair, price, total, time_str]) + os.EOL;
-            this.socket_client.write(data);
+        if(this.socket_client !== null) {
+            let last_find = this.data[market][pair].findLastMin();
+            if(last_find.length !== 0) {
+                let data = JSON.stringify([market, pair, price, total, time_str, last_find]) + os.EOL;
+                this.socket_client.write(data);
+            }
         }
     },
 

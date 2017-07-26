@@ -7,6 +7,7 @@ const server = require('http').createServer(app);
 const io = require('socket.io')(server);
 const net = require('net');
 const os = require('os');
+const uniqid = require('uniqid');
 
 "use strict";
 
@@ -28,22 +29,23 @@ app.use(function(req, res) {
     res.send('404 error :(');
 });
 
-//@todo change to Map()
-const clients = [];
+const clients = new Map();
 io.on('connection', socket => {
-    socket.client_id = clients.length;
-    clients.push(socket);
+    socket.client_id = uniqid();
+    socket.filter = {};
+    clients.set(uniqid, socket);
 
     socket.on('choose_filter', data => {
+        socket.filter = {'lowest_at': data};
         console.log(data);
     });
 
     socket.on('disconnect', () => {
-        //delete client
+        clients.delete(socket.client_id);
     });
 });
 
-server.listen(3000);
+server.listen(3001);
 
 
 const socket_path = __dirname + '/pipe.sock';
@@ -58,8 +60,11 @@ socket_client.on('error', err => {
         }
         let arr = JSON.parse(s);
         console.log(arr);
-        for(let i = 0; i < clients.length; i++) {
-            clients[i].emit('alert', arr);
+        for(let client of clients.values()) {
+            if(client.filter.hasOwnProperty('lowest_at')
+                &&  arr.indexOf(client.filter['lowest_at']) !== -1) {
+                client.emit('alert', arr);
+            }
         }
     });
 
