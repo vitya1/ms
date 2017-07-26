@@ -15,6 +15,8 @@
     <![endif]-->
 </head>
 <body>
+<!-- Yandex.Metrika counter --> <script type="text/javascript" > (function (d, w, c) { (w[c] = w[c] || []).push(function() { try { w.yaCounter45439710 = new Ya.Metrika({ id:45439710, clickmap:true, trackLinks:true, accurateTrackBounce:true }); } catch(e) { } }); var n = d.getElementsByTagName("script")[0], s = d.createElement("script"), f = function () { n.parentNode.insertBefore(s, n); }; s.type = "text/javascript"; s.async = true; s.src = "https://mc.yandex.ru/metrika/watch.js"; if (w.opera == "[object Opera]") { d.addEventListener("DOMContentLoaded", f, false); } else { f(); } })(document, window, "yandex_metrika_callbacks"); </script> <noscript><div><img src="https://mc.yandex.ru/watch/45439710" style="position:absolute; left:-9999px;" alt="" /></div></noscript> <!-- /Yandex.Metrika counter -->
+
 <div class="row">
     <div class="col-lg-5 col-md-5 col-lg-offset-2 col-md-offset-2">
         <h1>Coinigy market scanner</h1>
@@ -50,11 +52,13 @@
             <img src="/images/arrow-top.png">
         </p>
         <p>
-            Choose filter and wait for event. <br>
-            Join on <a target="_blank" href="https://github.com/vitya1/market-scanner">githab</a>.
+            Choose filter and just wait for event. Do not close browser tab. Please report all bugs and suggestion to github or any possible ways.
+        </p>
+        <p>
+            Join on <a target="_blank" href="https://github.com/vitya1/market-scanner">githab</a>.<br>
         </p>
     </div>
-    <table class="table content-block">
+    <table class="table content-block" style="display: none;">
         <thead>
             <th>#</th><th>Pair</th><th>Price</th><th>Market</th><th>Time</th><th>Coinigy link</th>
         </thead>
@@ -99,7 +103,6 @@
             if(play) {
                 sound.play();
             }
-            $('.start-screen').hide();
             $('.content-block').show();
             $('.content-block tbody')
                     .prepend('<tr><td>' + ++i + '</td><td>' + data[1] + '</td><td>' + data[2] + '</td><td>' + data[0] + '</td><td>'
@@ -122,6 +125,7 @@
             socket.emit('choose_filter', {
                 period: $(this).val()
             });
+            $('.start-screen').hide();
         });
 
     })();

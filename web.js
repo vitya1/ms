@@ -36,7 +36,9 @@ io.on('connection', socket => {
     clients.set(uniqid, socket);
 
     socket.on('choose_filter', data => {
-        socket.filter = {'lowest_at': data};
+        if(data.hasOwnProperty('period')) {
+            socket.filter = {'lowest_at': parseFloat(data['period'])};
+        }
         console.log(data);
     });
 
@@ -62,7 +64,7 @@ socket_client.on('error', err => {
         console.log(arr);
         for(let client of clients.values()) {
             if(client.filter.hasOwnProperty('lowest_at')
-                &&  arr.indexOf(client.filter['lowest_at']) !== -1) {
+                &&  arr[5].indexOf(client.filter['lowest_at']) !== -1) {
                 client.emit('alert', arr);
             }
         }
