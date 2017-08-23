@@ -1,8 +1,8 @@
-const socketCluster = require('socketcluster-client');
 const net = require('net');
 const fs = require('fs');
 const os = require('os');
 const readline = require('readline');
+const CryptoCollector = require('./crypto_collector');
 
 "use strict";
 
@@ -81,8 +81,8 @@ const PriceCollector = {
     data: {},
     socket_client: null,
 
-    push: function(market, pair, price, total, time_str) {
-        const timestamp = (new Date(time_str)).getTime();
+    push: function(market, pair, price) {
+        const timestamp = Date.now();
         this._initStructure(market, pair);
         this.data[market][pair].push(price, timestamp);
 
@@ -90,7 +90,7 @@ const PriceCollector = {
         if(this.socket_client !== null) {
             let last_find = this.data[market][pair].findLastMin();
             if(last_find.length !== 0) {
-                let data = JSON.stringify([market, pair, price, total, time_str, last_find]) + os.EOL;
+                let data = JSON.stringify([market, pair, price, timestamp, last_find]) + os.EOL;
                 this.socket_client.write(data);
             }
         }
@@ -149,67 +149,11 @@ const PriceCollector = {
 };
 
 const Scanner = function() {
-//an empty account's api keys, please do not touch
-    const api_credentials = {
-        "apiKey"    : "73544a7ef7f9765195618e2081bf5e3e",
-        "apiSecret" : "cdfab78a10c1eda4b1fe844a2e65642d"
-    };
-
-    const sc_socket = socketCluster.connect({
-        hostname  : "sc-02.coinigy.com",
-        port      : "443",
-        secure    : "true"
+    let collector = new CryptoCollector();
+    collector.on('ticker', (data) => {
+        PriceCollector.push(data['exchange'], data['label'], data['price']);
     });
-
-    sc_socket.on('connect', function (status) {
-
-        console.log(status);
-
-        sc_socket.on('error', function (err) {
-            console.log(err);
-        });
-
-        sc_socket.emit('auth', api_credentials, function (err, token) {
-            if (err || !token) {
-                console.log(err);
-                return;
-            }
-
-            const chanels = [];
-            let chanels_cnt = 0;
-            sc_socket.emit('exchanges', null, function (err, data) {
-                if (err) {
-                    console.log(err);
-                    return;
-                }
-
-                for(let i = 0; i < data[0].length; i++) {
-                    let market_name = data[0][i]['exch_code'];
-                    //console.log(market_name);
-
-                    sc_socket.emit('channels', market_name, function (err, market_data) {
-                        if (err) {
-                            console.log(err);
-                            return;
-                        }
-
-                        for(let j = 0; j < market_data[0].length; j++) {
-                            let chanel = market_data[0][j]['channel'];
-                            if(chanel.indexOf('TRADE') === 0) {
-                                //console.log(chanel, chanels_cnt++);
-                                let sc_channel = sc_socket.subscribe(chanel);
-                                sc_channel.watch(function (data) {
-                                    PriceCollector.push(data['exchange'], data['label'],
-                                        data['price'], data['total'], data['timestamp']);
-                                });
-                                chanels.push(sc_channel);
-                            }
-                        }
-                    });
-                }
-            });
-        });
-    });
+    collector.run();
 };
 
 PriceCollector.restore();
